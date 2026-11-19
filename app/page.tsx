@@ -46,7 +46,7 @@ export default function UniDocsCRM() {
     category: 'Положення',
     department: '',
     status: 'Чинний' as 'Чинний' | 'Проєкт' | 'Архівний',
-    approved_date: new Date().toISOString().split('T')[0],
+    approved_date: '',
     drive_url: '',
   });
 
@@ -80,7 +80,7 @@ export default function UniDocsCRM() {
   };
 
   useEffect(() => {
-    fetchDocuments();
+    fetchDocuments(); setFormData((prev) => ({ ...prev, approved_date: prev.approved_date || new Date().toISOString().split('T')[0] }));
   }, []);
 
   const handleAddDocument = async (e: React.FormEvent) => {
@@ -115,11 +115,11 @@ export default function UniDocsCRM() {
       category: 'Положення',
       department: '',
       status: 'Чинний',
-      approved_date: new Date().toISOString().split('T')[0],
+      approved_date: '',
       drive_url: '',
     });
     setIsAddModalOpen(false);
-    fetchDocuments();
+    fetchDocuments(); setFormData((prev) => ({ ...prev, approved_date: prev.approved_date || new Date().toISOString().split('T')[0] }));
   };
 
   const handleDeleteDocument = async (id: string) => {
