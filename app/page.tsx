@@ -80,7 +80,7 @@ export default function UniDocsCRM() {
   };
 
   useEffect(() => {
-    fetchDocuments(); setFormData((prev) => ({ ...prev, approved_date: prev.approved_date || new Date().toISOString().split('T')[0] })); setFormData((prev) => ({ ...prev, approved_date: prev.approved_date || '' }));
+    fetchDocuments();  setFormData((prev) => ({ ...prev, approved_date: prev.approved_date || '' }));
   }, []);
 
   const handleAddDocument = async (e: React.FormEvent) => {
