@@ -12,6 +12,7 @@ import {
   X,
   CheckCircle2,
   Clock,
+  AlertCircle,
   Archive,
   Filter,
 } from 'lucide-react';
@@ -19,15 +20,35 @@ import {
 interface DocumentItem {
   id: string;
   title: string;
-  doc_number: string;
+  doc_number?: string;
   category: string;
-  department: string;
-  status: 'Чинний' | 'Проєкт' | 'Архівний';
-  approved_date: string;
+  department?: string;
+  status: string;
+  approved_date?: string;
   drive_url: string;
-  drive_file_id: string;
+  drive_file_id?: string;
   created_at?: string;
 }
+
+const CATEGORIES = [
+  'Загальні політики',
+  'Вступна кампанія',
+  'Виховні процеси',
+  'Операційні питання',
+  'Студентське самоврядування',
+  'Положення',
+  'Наказ',
+  'Інше',
+];
+
+const STATUSES = [
+  'Затверджений',
+  'В розробці',
+  'Потребує редагування',
+  'Чинний',
+  'Проєкт',
+  'Архівний',
+];
 
 export default function UniDocsCRM() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -43,18 +64,20 @@ export default function UniDocsCRM() {
   const [formData, setFormData] = useState({
     title: '',
     doc_number: '',
-    category: 'Положення',
+    category: 'Загальні політики',
     department: '',
-    status: 'Чинний' as 'Чинний' | 'Проєкт' | 'Архівний',
+    status: 'Затверджений',
     approved_date: '',
     drive_url: '',
   });
 
   const extractDriveFileId = (url: string): string => {
+    if (!url) return '';
     const patterns = [
       /\/file\/d\/([a-zA-Z0-9_-]+)/,
       /\/document\/d\/([a-zA-Z0-9_-]+)/,
       /\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/,
+      /\/presentation\/d\/([a-zA-Z0-9_-]+)/,
       /[?&]id=([a-zA-Z0-9_-]+)/,
     ];
     for (const pattern of patterns) {
@@ -80,7 +103,7 @@ export default function UniDocsCRM() {
   };
 
   useEffect(() => {
-    fetchDocuments();  setFormData((prev) => ({ ...prev, approved_date: prev.approved_date || '' }));
+    fetchDocuments();
   }, []);
 
   const handleAddDocument = async (e: React.FormEvent) => {
@@ -92,9 +115,9 @@ export default function UniDocsCRM() {
     const { error } = await supabase.from('documents').insert([
       {
         title: formData.title,
-        doc_number: formData.doc_number,
+        doc_number: formData.doc_number || null,
         category: formData.category,
-        department: formData.department,
+        department: formData.department || null,
         status: formData.status,
         approved_date: formData.approved_date || null,
         drive_url: formData.drive_url,
@@ -112,14 +135,14 @@ export default function UniDocsCRM() {
     setFormData({
       title: '',
       doc_number: '',
-      category: 'Положення',
+      category: 'Загальні політики',
       department: '',
-      status: 'Чинний',
+      status: 'Затверджений',
       approved_date: '',
       drive_url: '',
     });
     setIsAddModalOpen(false);
-    fetchDocuments(); setFormData((prev) => ({ ...prev, approved_date: prev.approved_date || '' }));
+    fetchDocuments();
   };
 
   const handleDeleteDocument = async (id: string) => {
@@ -133,8 +156,8 @@ export default function UniDocsCRM() {
   const filteredDocs = documents.filter((doc) => {
     const matchesSearch =
       doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.doc_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.department.toLowerCase().includes(searchQuery.toLowerCase());
+      (doc.doc_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.department || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory =
       categoryFilter === 'Усі' || doc.category === categoryFilter;
     const matchesStatus =
@@ -144,31 +167,43 @@ export default function UniDocsCRM() {
   });
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Чинний':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Чинний
-          </span>
-        );
-      case 'Проєкт':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
-            <Clock className="w-3.5 h-3.5" /> Проєкт
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-            <Archive className="w-3.5 h-3.5" /> Архівний
-          </span>
-        );
+    if (status === 'Затверджений' || status === 'Чинний') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <CheckCircle2 className="w-3.5 h-3.5" /> {status}
+        </span>
+      );
     }
+    if (status === 'Потребує редагування') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+          <AlertCircle className="w-3.5 h-3.5" /> {status}
+        </span>
+      );
+    }
+    if (status === 'В розробці' || status === 'Проєкт') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
+          <Clock className="w-3.5 h-3.5" /> {status}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+        <Archive className="w-3.5 h-3.5" /> {status || 'Без статусу'}
+      </span>
+    );
   };
+
+  const uniqueCategories = Array.from(
+    new Set([...CATEGORIES, ...documents.map((d) => d.category).filter(Boolean)])
+  );
+  const uniqueStatuses = Array.from(
+    new Set([...STATUSES, ...documents.map((d) => d.status).filter(Boolean)])
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Шапка */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -180,7 +215,7 @@ export default function UniDocsCRM() {
                 UniDocs CRM
               </h1>
               <p className="text-xs text-slate-500">
-                Реєстр нормативних документів університету
+                Реєстр внутрішніх політик та нормативних документів
               </p>
             </div>
           </div>
@@ -196,7 +231,6 @@ export default function UniDocsCRM() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Статистика */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <p className="text-sm text-slate-500">Усього документів</p>
@@ -205,45 +239,55 @@ export default function UniDocsCRM() {
             </p>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-sm text-slate-500">Чинні документи</p>
+            <p className="text-sm text-slate-500">Затверджені / Чинні</p>
             <p className="text-2xl font-bold text-emerald-600 mt-1">
-              {documents.filter((d) => d.status === 'Чинний').length}
+              {
+                documents.filter(
+                  (d) => d.status === 'Затверджений' || d.status === 'Чинний'
+                ).length
+              }
             </p>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <p className="text-sm text-slate-500">На розгляді (Проєкти)</p>
+            <p className="text-sm text-slate-500">В розробці / На редагуванні</p>
             <p className="text-2xl font-bold text-amber-600 mt-1">
-              {documents.filter((d) => d.status === 'Проєкт').length}
+              {
+                documents.filter(
+                  (d) =>
+                    d.status === 'В розробці' ||
+                    d.status === 'Потребує редагування' ||
+                    d.status === 'Проєкт'
+                ).length
+              }
             </p>
           </div>
         </div>
 
-        {/* Пошук і фільтри */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Пошук за назвою, номером наказу або підрозділом..."
+              placeholder="Пошук за назвою, номером або підрозділом..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Filter className="w-4 h-4 text-slate-400 hidden sm:block" />
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="Усі">Усі категорії</option>
-              <option value="Положення">Положення</option>
-              <option value="Наказ">Наказ</option>
-              <option value="Розпорядження">Розпорядження</option>
-              <option value="Інструкція">Інструкція</option>
-              <option value="Інше">Інше</option>
+              <option value="Усі">Усі розділи</option>
+              {uniqueCategories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
             </select>
 
             <select
@@ -252,14 +296,15 @@ export default function UniDocsCRM() {
               className="text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="Усі">Усі статуси</option>
-              <option value="Чинний">Чинний</option>
-              <option value="Проєкт">Проєкт</option>
-              <option value="Архівний">Архівний</option>
+              {uniqueStatuses.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
-        {/* Таблиця документів */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-12 text-center text-slate-500 text-sm">
@@ -270,7 +315,7 @@ export default function UniDocsCRM() {
               <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
               <p className="text-slate-600 font-medium">Документів не знайдено</p>
               <p className="text-slate-400 text-sm mt-1">
-                Натисніть «Додати документ», щоб внести перший запис із Google Диску.
+                Натисніть «Додати документ» або завантажте CSV у Supabase.
               </p>
             </div>
           ) : (
@@ -278,68 +323,72 @@ export default function UniDocsCRM() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                    <th className="py-3.5 px-4">№ / Дата</th>
                     <th className="py-3.5 px-4">Назва документа</th>
-                    <th className="py-3.5 px-4">Категорія</th>
-                    <th className="py-3.5 px-4">Підрозділ</th>
+                    <th className="py-3.5 px-4">Розділ</th>
                     <th className="py-3.5 px-4">Статус</th>
                     <th className="py-3.5 px-4 text-right">Дії</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 text-sm">
-                  {filteredDocs.map((doc) => (
-                    <tr key={doc.id} className="hover:bg-slate-50 transition">
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="font-medium text-slate-900">
-                          {doc.doc_number || '—'}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {doc.approved_date || ''}
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 font-medium text-slate-900 max-w-md">
-                        {doc.title}
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap text-slate-600">
-                        {doc.category}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600">
-                        {doc.department || '—'}
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        {getStatusBadge(doc.status)}
-                      </td>
-                      <td className="py-3.5 px-4 whitespace-nowrap text-right">
-                        <div className="inline-flex items-center gap-2">
-                          {doc.drive_file_id && (
-                            <button
-                              onClick={() => setPreviewDoc(doc)}
-                              title="Переглянути в системі"
-                              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+                  {filteredDocs.map((doc) => {
+                    const resolvedFileId =
+                      doc.drive_file_id || extractDriveFileId(doc.drive_url);
+
+                    return (
+                      <tr key={doc.id} className="hover:bg-slate-50 transition">
+                        <td className="py-3.5 px-4 font-medium text-slate-900 max-w-lg">
+                          <div>{doc.title}</div>
+                          {(doc.doc_number || doc.approved_date) && (
+                            <div className="text-xs text-slate-400 mt-0.5">
+                              {[doc.doc_number, doc.approved_date]
+                                .filter(Boolean)
+                                .join(' • ')}
+                            </div>
                           )}
-                          <a
-                            href={doc.drive_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Відкрити на Google Диску"
-                            className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                          <button
-                            onClick={() => handleDeleteDocument(doc.id)}
-                            title="Видалити"
-                            className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap text-slate-600">
+                          {doc.category}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {getStatusBadge(doc.status)}
+                        </td>
+                        <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                          <div className="inline-flex items-center gap-2">
+                            {resolvedFileId && (
+                              <button
+                                onClick={() =>
+                                  setPreviewDoc({
+                                    ...doc,
+                                    drive_file_id: resolvedFileId,
+                                  })
+                                }
+                                title="Переглянути в системі"
+                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            )}
+                            <a
+                              href={doc.drive_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Відкрити на Google Диску"
+                              className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                            <button
+                              onClick={() => handleDeleteDocument(doc.id)}
+                              title="Видалити"
+                              className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -347,13 +396,12 @@ export default function UniDocsCRM() {
         </div>
       </main>
 
-      {/* Модальне вікно додавання документа */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-slate-900">
-                Новий нормативний документ
+                Новий документ
               </h2>
               <button
                 onClick={() => setIsAddModalOpen(false)}
@@ -371,7 +419,7 @@ export default function UniDocsCRM() {
                 <input
                   required
                   type="text"
-                  placeholder="Напр.: Положення про організацію освітнього процесу"
+                  placeholder="Напр.: Положення про академічну мобільність"
                   value={formData.title}
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
@@ -383,40 +431,7 @@ export default function UniDocsCRM() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Реєстраційний номер
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Напр.: № 142-ОД"
-                    value={formData.doc_number}
-                    onChange={(e) =>
-                      setFormData({ ...formData, doc_number: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Дата затвердження
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.approved_date}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        approved_date: e.target.value,
-                      })
-                    }
-                    className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Категорія
+                    Розділ
                   </label>
                   <select
                     value={formData.category}
@@ -425,11 +440,11 @@ export default function UniDocsCRM() {
                     }
                     className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="Положення">Положення</option>
-                    <option value="Наказ">Наказ</option>
-                    <option value="Розпорядження">Розпорядження</option>
-                    <option value="Інструкція">Інструкція</option>
-                    <option value="Інше">Інше</option>
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -439,36 +454,17 @@ export default function UniDocsCRM() {
                   <select
                     value={formData.status}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        status: e.target.value as
-                          | 'Чинний'
-                          | 'Проєкт'
-                          | 'Архівний',
-                      })
+                      setFormData({ ...formData, status: e.target.value })
                     }
                     className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
-                    <option value="Чинний">Чинний</option>
-                    <option value="Проєкт">Проєкт</option>
-                    <option value="Архівний">Архівний</option>
+                    {STATUSES.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Відповідальний підрозділ
-                </label>
-                <input
-                  type="text"
-                  placeholder="Напр.: Навчально-методичний відділ"
-                  value={formData.department}
-                  onChange={(e) =>
-                    setFormData({ ...formData, department: e.target.value })
-                  }
-                  className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
               </div>
 
               <div>
@@ -478,16 +474,13 @@ export default function UniDocsCRM() {
                 <input
                   required
                   type="url"
-                  placeholder="https://drive.google.com/file/d/..."
+                  placeholder="https://docs.google.com/document/d/..."
                   value={formData.drive_url}
                   onChange={(e) =>
                     setFormData({ ...formData, drive_url: e.target.value })
                   }
                   className="w-full px-3.5 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <p className="text-xs text-slate-400 mt-1">
-                  Переконайтеся, що на Google Диску відкрито доступ «Усі, хто має посилання».
-                </p>
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
@@ -511,7 +504,6 @@ export default function UniDocsCRM() {
         </div>
       )}
 
-      {/* Модальне вікно перегляду PDF/DOCX із Google Диску */}
       {previewDoc && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-5xl w-full h-[85vh] flex flex-col overflow-hidden shadow-2xl">
@@ -521,7 +513,7 @@ export default function UniDocsCRM() {
                   {previewDoc.title}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {previewDoc.doc_number} • {previewDoc.category}
+                  {previewDoc.category} • {previewDoc.status}
                 </p>
               </div>
               <div className="flex items-center gap-2">
